@@ -104,6 +104,10 @@ curl -X POST localhost:8000/agent/query \
 `http://localhost:8000/docs`(Swagger UI)에서 각 엔드포인트의 "Try it out" 버튼으로 curl 없이
 바로 테스트할 수 있다.
 
+curl이나 Swagger UI보다 간단하게 써보고 싶다면 서버 실행 중 `http://localhost:8000`(루트 경로)에
+접속하면 된다 — `static/index.html`로 구현된 데모 페이지로, 4개 탭(물성 계산/화합물 조회/문헌
+검색/AI 에이전트)에서 폼 입력만으로 바로 결과를 확인할 수 있다.
+
 ## Testing
 
 ```bash
