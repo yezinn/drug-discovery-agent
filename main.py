@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 
 from schemas import (
     AgentQueryRequest,
@@ -122,3 +123,7 @@ def agent_query(req: AgentQueryRequest) -> AgentQueryResponse:
     ]
 
     return AgentQueryResponse(question=req.question, answer=result["answer"], tool_calls=tool_calls)
+
+
+# 데모용 프론트엔드 (static/index.html) — curl 없이 브라우저에서 바로 써볼 수 있게
+app.mount("/", StaticFiles(directory="static", html=True), name="static")

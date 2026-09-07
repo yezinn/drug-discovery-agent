@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drug Discovery Assistant</title>
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --card: #ffffff;
+    --border: #e2e5ea;
+    --text: #1a1d23;
+    --text-muted: #6b7280;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --success-bg: #ecfdf5;
+    --success-text: #047857;
+    --warn-bg: #fffbeb;
+    --warn-text: #b45309;
+    --error-bg: #fef2f2;
+    --error-text: #b91c1c;
+    --mono: "SF Mono", "Consolas", "Menlo", monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Pretendard, sans-serif;
+    line-height: 1.5;
+  }
+  header {
+    padding: 28px 24px 16px;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+  header h1 { margin: 0 0 6px; font-size: 22px; }
+  header p { margin: 0; color: var(--text-muted); font-size: 14px; }
+
+  main { max-width: 860px; margin: 0 auto; padding: 0 24px 60px; }
+
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin: 16px 0 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab-btn {
+    background: none;
+    border: none;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+  .field { margin-bottom: 14px; }
+  .hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  input[type="text"], input[type="number"], textarea {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 70px; }
+  input:focus, textarea:focus { outline: none; border-color: var(--primary); }
+
+  .row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  .row .field { flex: 1; min-width: 140px; }
+
+  button.run {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.run:hover { background: var(--primary-hover); }
+  button.run:disabled { background: #9ca3af; cursor: not-allowed; }
+
+  button.link-btn {
+    background: none;
+    border: none;
+    color: var(--primary);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+  }
+
+  .result { margin-top: 16px; }
+  .error-box {
+    background: var(--error-bg);
+    color: var(--error-text);
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .loading { color: var(--text-muted); font-size: 13px; }
+
+  table.props { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.props td { padding: 6px 4px; border-bottom: 1px solid var(--border); }
+  table.props td:first-child { color: var(--text-muted); width: 45%; }
+  table.props td:last-child { font-family: var(--mono); }
+
+  .badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 10px;
+  }
+  .badge.pass { background: var(--success-bg); color: var(--success-text); }
+  .badge.warn { background: var(--warn-bg); color: var(--warn-text); }
+
+  code.smiles {
+    display: block;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: #f3f4f6;
+    padding: 8px 10px;
+    border-radius: 6px;
+    word-break: break-all;
+    margin-top: 6px;
+  }
+
+  .article {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .article:last-child { border-bottom: none; }
+  .article .pmid { font-size: 12px; color: var(--text-muted); font-family: var(--mono); }
+  .article .title { font-weight: 600; margin: 2px 0 6px; font-size: 14.5px; }
+  .article .abstract { font-size: 13.5px; color: #374151; }
+
+  details.trace {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-top: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  details.trace summary {
+    cursor: pointer;
+    font-weight: 600;
+    list-style: none;
+  }
+  details.trace summary::-webkit-details-marker { display: none; }
+  details.trace summary::before { content: "▸ "; color: var(--text-muted); }
+  details.trace[open] summary::before { content: "▾ "; }
+  .trace-body { margin-top: 8px; font-family: var(--mono); font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+  .trace-body .label { color: var(--text-muted); font-family: inherit; }
+
+  .answer { font-size: 14.5px; }
+  .answer h3, .answer h4 { margin: 14px 0 6px; font-size: 15px; }
+  .answer ul { margin: 6px 0; padding-left: 20px; }
+  .answer p { margin: 8px 0; }
+
+  footer {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 10px 24px 40px;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🧪 Drug Discovery Assistant</h1>
+  <p>FastAPI + LangChain 에이전트 + RDKit — 화합물 물성, PubChem 조회, PubMed 문헌 검색을 하나의 도구로.</p>
+</header>
+
+<main>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="properties">물성 계산</button>
+    <button class="tab-btn" data-tab="lookup">화합물 조회</button>
+    <button class="tab-btn" data-tab="literature">문헌 검색</button>
+    <button class="tab-btn" data-tab="agent">AI 에이전트</button>
+  </div>
+
+  <!-- 1. 물성 계산 -->
+  <section class="panel active" id="panel-properties">
+    <div class="card">
+      <div class="field">
+        <label for="smiles-input">SMILES</label>
+        <input type="text" id="smiles-input" placeholder="예: CC(=O)OC1=CC=CC=C1C(=O)O (아스피린)">
+        <div class="hint">화합물 구조를 SMILES 문자열로 입력하세요. 화합물명만 안다면 "화합물 조회" 탭을 먼저 써보세요.</div>
+      </div>
+      <button class="run" id="btn-properties">물성 계산</button>
+      <div class="result" id="result-properties"></div>
+    </div>
+  </section>
+
+  <!-- 2. 화합물 조회 -->
+  <section class="panel" id="panel-lookup">
+    <div class="card">
+      <div class="field">
+        <label for="name-input">화합물명</label>
+        <input type="text" id="name-input" placeholder="예: Imatinib">
+      </div>
+      <button class="run" id="btn-lookup">조회</button>
+      <div class="result" id="result-lookup"></div>
+    </div>
+  </section>
+
+  <!-- 3. 문헌 검색 -->
+  <section class="panel" id="panel-literature">
+    <div class="card">
+      <div class="row">
+        <div class="field" style="flex: 3;">
+          <label for="query-input">검색어</label>
+          <input type="text" id="query-input" placeholder="예: imatinib resistance mechanism">
+        </div>
+        <div class="field" style="flex: 1; min-width: 90px;">
+          <label for="maxresults-input">최대 개수</label>
+          <input type="number" id="maxresults-input" value="5" min="1" max="20">
+        </div>
+      </div>
+      <button class="run" id="btn-literature">검색</button>
+      <div class="result" id="result-literature"></div>
+    </div>
+  </section>
+
+  <!-- 4. AI 에이전트 -->
+  <section class="panel" id="panel-agent">
+    <div class="card">
+      <div class="field">
+        <label for="question-input">질문 (자연어)</label>
+        <textarea id="question-input" placeholder="예: 이매티닙 SMILES 찾아서 Rule of Five 통과하는지 알려줘"></textarea>
+        <div class="hint">에이전트가 필요에 따라 화합물 조회·물성 계산·문헌 검색을 스스로 조합해서 답합니다. 응답까지 몇 초 걸릴 수 있어요.</div>
+      </div>
+      <button class="run" id="btn-agent">질문하기</button>
+      <div class="result" id="result-agent"></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  이 페이지는 로컬 FastAPI 서버(<code>uvicorn main:app</code>)가 실행 중일 때만 동작합니다. API 원본 명세는 <a href="/docs">/docs</a>에서 확인할 수 있습니다.
+</footer>
+
+<script>
+  // ---------- 탭 전환 ----------
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+  });
+  function switchTab(tab) {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+    document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === "panel-" + tab));
+  }
+
+  // ---------- 공통 유틸 ----------
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function showLoading(el) {
+    el.innerHTML = '<div class="loading">처리 중...</div>';
+  }
+
+  function showError(el, message) {
+    el.innerHTML = `<div class="error-box">오류: ${escapeHtml(message)}</div>`;
+  }
+
+  async function callApi(path, body) {
+    const res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      const detail = (data && data.detail) ? data.detail : `HTTP ${res.status}`;
+      throw new Error(detail);
+    }
+    return data;
+  }
+
+  // 아주 가벼운 마크다운 렌더러 — 에이전트 답변(굵게/리스트/헤더 정도)만 처리
+  function renderMarkdownLite(text) {
+    let html = escapeHtml(text);
+    html = html.replace(/^### (.*)$/gm, "<h4>$1</h4>");
+    html = html.replace(/^## (.*)$/gm, "<h3>$1</h3>");
+    html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    // 연속된 "- " 또는 "* " 줄들을 <ul>로 묶기
+    html = html.replace(/(^(?:[-*] .*(?:\n|$))+)/gm, block => {
+      const items = block.trim().split("\n").map(l => `<li>${l.replace(/^[-*]\s+/, "")}</li>`).join("");
+      return `<ul>${items}</ul>`;
+    });
+    html = html.split(/\n{2,}/).map(p => (p.startsWith("<") ? p : `<p>${p.replace(/\n/g, "<br>")}</p>`)).join("");
+    return html;
+  }
+
+  // ---------- 1. 물성 계산 ----------
+  document.getElementById("btn-properties").addEventListener("click", async () => {
+    const smiles = document.getElementById("smiles-input").value.trim();
+    const out = document.getElementById("result-properties");
+    if (!smiles) { showError(out, "SMILES를 입력하세요."); return; }
+    showLoading(out);
+    try {
+      const d = await callApi("/molecule/properties", { smiles });
+      const badgeClass = d.passes_lipinski_ro5 ? "pass" : "warn";
+      const badgeText = d.passes_lipinski_ro5
+        ? "Lipinski's Rule of Five 통과"
+        : `Rule of Five 위반 ${d.lipinski_violations}개`;
+      out.innerHTML = `
+        <table class="props">
+          <tr><td>분자량 (MW)</td><td>${d.molecular_weight.toFixed(2)} g/mol</td></tr>
+          <tr><td>LogP</td><td>${d.logp.toFixed(2)}</td></tr>
+          <tr><td>수소결합 공여체 (HBD)</td><td>${d.h_bond_donors}</td></tr>
+          <tr><td>수소결합 수용체 (HBA)</td><td>${d.h_bond_acceptors}</td></tr>
+          <tr><td>TPSA</td><td>${d.tpsa.toFixed(2)} Å²</td></tr>
+          <tr><td>회전 가능 결합 수</td><td>${d.rotatable_bonds}</td></tr>
+        </table>
+        <span class="badge ${badgeClass}">${badgeText}</span>
+        ${d.violation_details.length ? `<div class="hint">${d.violation_details.map(escapeHtml).join(", ")}</div>` : ""}
+      `;
+    } catch (e) { showError(out, e.message); }
+  });
+
+  // ---------- 2. 화합물 조회 ----------
+  document.getElementById("btn-lookup").addEventListener("click", async () => {
+    const name = document.getElementById("name-input").value.trim();
+    const out = document.getElementById("result-lookup");
+    if (!name) { showError(out, "화합물명을 입력하세요."); return; }
+    showLoading(out);
+    try {
+      const d = await callApi("/compound/lookup", { name });
+      if (!d.found) {
+        out.innerHTML = `<div class="hint">"${escapeHtml(name)}"에 대한 화합물을 찾을 수 없습니다.</div>`;
+        return;
+      }
+      out.innerHTML = `
+        <div><strong>${escapeHtml(d.name)}</strong> — PubChem CID ${d.cid}</div>
+        <code class="smiles">${escapeHtml(d.smiles)}</code>
+        <div style="margin-top:10px;">
+          <button class="link-btn" id="use-smiles-btn">이 SMILES로 물성 계산하기 →</button>
+        </div>
+      `;
+      document.getElementById("use-smiles-btn").addEventListener("click", () => {
+        document.getElementById("smiles-input").value = d.smiles;
+        switchTab("properties");
+        document.getElementById("btn-properties").click();
+      });
+    } catch (e) { showError(out, e.message); }
+  });
+
+  // ---------- 3. 문헌 검색 ----------
+  document.getElementById("btn-literature").addEventListener("click", async () => {
+    const query = document.getElementById("query-input").value.trim();
+    const maxResults = parseInt(document.getElementById("maxresults-input").value, 10) || 5;
+    const out = document.getElementById("result-literature");
+    if (!query) { showError(out, "검색어를 입력하세요."); return; }
+    showLoading(out);
+    try {
+      const d = await callApi("/literature/search", { query, max_results: maxResults });
+      if (!d.articles.length) {
+        out.innerHTML = `<div class="hint">검색 결과가 없습니다.</div>`;
+        return;
+      }
+      out.innerHTML = d.articles.map(a => `
+        <div class="article">
+          <div class="pmid">PMID ${escapeHtml(a.pmid)}</div>
+          <div class="title">${escapeHtml(a.title)}</div>
+          <div class="abstract">${escapeHtml(a.abstract.slice(0, 280))}${a.abstract.length > 280 ? "…" : ""}</div>
+        </div>
+      `).join("");
+    } catch (e) { showError(out, e.message); }
+  });
+
+  // ---------- 4. AI 에이전트 ----------
+  document.getElementById("btn-agent").addEventListener("click", async () => {
+    const question = document.getElementById("question-input").value.trim();
+    const out = document.getElementById("result-agent");
+    const btn = document.getElementById("btn-agent");
+    if (!question) { showError(out, "질문을 입력하세요."); return; }
+    btn.disabled = true;
+    showLoading(out);
+    try {
+      const d = await callApi("/agent/query", { question });
+      const traceHtml = d.tool_calls.map((tc, i) => `
+        <details class="trace">
+          <summary>${i + 1}. ${escapeHtml(tc.tool)}</summary>
+          <div class="trace-body"><span class="label">input:</span> ${escapeHtml(tc.input)}\n<span class="label">output:</span> ${escapeHtml(tc.output)}</div>
+        </details>
+      `).join("");
+      out.innerHTML = `
+        <div class="answer">${renderMarkdownLite(d.answer)}</div>
+        ${traceHtml ? `<div style="margin-top:16px;"><div class="hint" style="margin-bottom:6px;">tool 호출 순서</div>${traceHtml}</div>` : ""}
+      `;
+    } catch (e) { showError(out, e.message); }
+    finally { btn.disabled = false; }
+  });
+</script>
+
+</body>
+</html>
