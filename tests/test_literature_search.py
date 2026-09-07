@@ -89,6 +89,40 @@ def test_search_literature_multiple_abstract_parts_are_joined(mock_esearch, mock
 
 @patch.dict(os.environ, {"ENTREZ_EMAIL": "test@example.com"})
 @patch("tools.literature_search.Entrez.read")
+@patch("tools.literature_search.Entrez.efetch")
+@patch("tools.literature_search.Entrez.esearch")
+def test_search_literature_strips_inline_markup_tags(mock_esearch, mock_efetch, mock_read):
+    """PubMed 원본 XML에 섞여 오는 <i>, <sup> 같은 인라인 마크업 태그가 제거되어야 한다
+    (2026-09-07 실제 발견: "PI3<i>K</i>/110β" 형태로 제목에 태그가 그대로 노출되던 문제)."""
+    mock_esearch.return_value = _mock_handle()
+    mock_efetch.return_value = _mock_handle()
+    mock_read.side_effect = [
+        {"IdList": ["40294240"]},
+        {
+            "PubmedArticle": [
+                {
+                    "MedlineCitation": {
+                        "PMID": "40294240",
+                        "Article": {
+                            "ArticleTitle": "Novel Selective PI3<i>K</i>/110β PROTAC Degraders",
+                            "Abstract": {
+                                "AbstractText": ["The p110<sup>β</sup> isoform plays a key role."]
+                            },
+                        },
+                    }
+                }
+            ]
+        },
+    ]
+
+    articles = search_literature("query")
+
+    assert articles[0].title == "Novel Selective PI3K/110β PROTAC Degraders"
+    assert articles[0].abstract == "The p110β isoform plays a key role."
+
+
+@patch.dict(os.environ, {"ENTREZ_EMAIL": "test@example.com"})
+@patch("tools.literature_search.Entrez.read")
 @patch("tools.literature_search.Entrez.esearch")
 def test_search_literature_no_results_returns_empty_list(mock_esearch, mock_read):
     """검색 결과가 0건이면 efetch는 아예 호출하지 않고 빈 리스트를 반환해야 한다."""

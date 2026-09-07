@@ -13,9 +13,21 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 
 from Bio import Entrez
+
+# PubMed 원본 XML은 유전자명·이탤릭 표기 등을 위해 제목/초록 안에 <i>, <sup> 같은
+# 인라인 마크업 태그를 실제로 포함하는 경우가 있다 (예: "PI3<i>K</i>/110β"). 이걸
+# 그대로 두면 REST API 응답뿐 아니라 에이전트가 LLM에 넘기는 컨텍스트에도 태그가
+# 그대로 섞여 들어가므로, 파싱 시점에 제거해서 양쪽 다 깨끗한 텍스트를 쓰게 한다.
+_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _strip_markup(text: str) -> str:
+    """인라인 마크업 태그를 제거한다. 서식 정보만 사라지고 텍스트 내용은 그대로 남는다."""
+    return _TAG_RE.sub("", text)
 
 
 class LiteratureSearchError(Exception):
@@ -64,9 +76,9 @@ def search_literature(query: str, max_results: int = 5) -> list[PubMedArticle]:
             medline = pubmed_article["MedlineCitation"]
             pmid = str(medline["PMID"])
             article_data = medline["Article"]
-            title = str(article_data.get("ArticleTitle", ""))
+            title = _strip_markup(str(article_data.get("ArticleTitle", "")))
             abstract_parts = article_data.get("Abstract", {}).get("AbstractText", [])
-            abstract = " ".join(str(part) for part in abstract_parts)
+            abstract = " ".join(_strip_markup(str(part)) for part in abstract_parts)
         except (KeyError, TypeError):
             continue
         articles.append(PubMedArticle(pmid=pmid, title=title, abstract=abstract))
